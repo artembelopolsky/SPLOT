@@ -17,7 +17,7 @@ mpl.rcParams['pdf.fonttype'] = 42  # necessary to be able to edit figure text in
 
 
 from splot_utils import smooth_sqwave, extract_conditions, two_sample_ttest, \
-                        two_sample_paired_permutation
+                        two_sample_paired_permutation, two_sample_independent_permutation
 
 
 #================================================================================================s
@@ -84,7 +84,7 @@ cond1, cond2 = extract_conditions(df, depend_var='proportion', ind_var='conditio
 #================================================================================================  
 
 
-clusters_rep_mis = two_sample_ttest(cond1, cond2, confidence=0.975, color1='#5e3c99',\
+clusters_cond1_cond2 = two_sample_ttest(cond1, cond2, confidence=0.975, color1='#5e3c99',\
                 color2='#e66101',to_plot='yes', cond_names= ['negative', 'positive'])
 
 #================================================================================================ 
@@ -94,9 +94,16 @@ clusters_rep_mis = two_sample_ttest(cond1, cond2, confidence=0.975, color1='#5e3
 #================================================================================================  
 print('\nStarting permutation for TWO-SAMPLE tests: cond1 vs cond2...\n')
 
-cutoff_2sampl, clusters_all = two_sample_paired_permutation(df, num_perm=1000, obs_clusters=clusters_rep_mis, 
+cutoff_2sampl, clusters_all = two_sample_paired_permutation(df, num_perm=1000, obs_clusters=clusters_cond1_cond2, 
                                        label_to_shuffle='condition', \
                                        to_plot='yes', title= AOI + ':Negative vs Positive')                 
 
 
+
+print('\n DEBUG: Starting permutation for TWO-SAMPLE independent tests: cond1 vs cond2...\n')
+clusters_cond1_cond2 = two_sample_ttest(cond1, cond2, ttest_type='independent', confidence=0.975, color1='#5e3c99',\
+                color2='#e66101',to_plot='yes', cond_names= ['negative', 'positive'])
+    
+cutoff_2sampl, clusters_all = two_sample_independent_permutation(df, subj_label='subject_nr', cond_label='conditions', obs_clusters=clusters_cond1_cond2,
+                                       num_perm=1000, to_plot='yes')
 

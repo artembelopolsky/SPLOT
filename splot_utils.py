@@ -159,10 +159,11 @@ def two_sample_ttest(data1, data2, ttest_type='paired', confidence=0.975, bonfer
 
 #=========================================================================================================
 # 
-# Two-sample permutation test 
+# Two-sample paired permutation test 
 #
 #=========================================================================================================
-def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion', num_perm=1000, obs_clusters=None, to_plot='no', title='', log_yaxis=True):
+def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion', num_perm=1000, 
+                                  obs_clusters=None, to_plot='no', title='', log_yaxis=True):
     """
     Only paired test permutation for now.
 
@@ -238,6 +239,139 @@ def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion',
     start_time = time.perf_counter()
 
     stats = ttest_rel(cond1_perm, cond2_perm)
+    stats = np.array(stats)
+    
+    mask_nan = np.isnan(stats[0]) # get index of nan values
+    stats[0][mask_nan] = 0 # replace nan t-values with zeros
+    
+    sems = sem(cond1_perm - cond2_perm)/2. 
+    sems = np.array(sems)               
+    
+    t_stats = stats[0].T    
+    sign_mask = stats[1] < 0.05
+    sign_mask = sign_mask.T
+    
+    print('Paired T-test took: ', time.perf_counter() - start_time)
+    
+    # Split into significant clusters
+    # https://stackoverflow.com/questions/43385877/efficient-numpy-subarrays-extraction-from-a-mask
+    start_time = time.perf_counter()
+    clusters_all = []
+    for perm in range(t_stats.shape[0]):
+        clusters = np.split(t_stats[perm], np.flatnonzero(np.diff(sign_mask[perm])) + 1)[1 - sign_mask[perm][0]::2]
+        clusters_distrib = []
+        for i in range(len(clusters)):
+            clusters_distrib.append(np.abs(clusters[i].sum()))
+        if len(clusters_distrib) > 0:
+            clusters_all.append(np.array(clusters_distrib).max())
+        else:
+            clusters_all.append(t_stats[perm].max())
+        
+    
+    print('Extracting clusters took: ', time.perf_counter() - start_time)
+    
+    cutoff = np.percentile(clusters_all,95)
+    print('Significance Cutoff is: ', cutoff)
+    
+    if obs_clusters:
+        percentile_values = [percentileofscore(clusters_all, obs_cluster) for obs_cluster in obs_clusters]
+        p_values = 1 - np.array(percentile_values)/100.
+        print('Cluster p-values: ', p_values)
+        
+    if to_plot == 'yes':
+        plt.figure()        
+        plt.title(title, fontsize=35)       
+        plt.xticks(fontsize=28)
+        plt.yticks(fontsize=28)
+        plt.ylabel(f'Frequency (log={log_yaxis})', fontsize=32)
+        plt.xlabel('Cluster strength (sum of t-values)', fontsize=32)   
+        
+        hist_info = plt.hist(clusters_all, log=log_yaxis)
+        #cutoff = np.percentile(clusters_all,95)
+        #print('Significance Cutoff is: ', cutoff)
+        plt.text(0,0, 'Significance Cutoff is: ' + str(cutoff))
+        
+        max_freq = int(np.max(hist_info[0]))
+        plt.plot(cutoff *np.ones(max_freq+1), np.arange(max_freq+1), color='red', lw=10)
+        
+        if obs_clusters: # plot observed cluster strengths            
+            obs_clusters = [obs_cluster if obs_cluster<35000 else 35000 for obs_cluster in obs_clusters] #set a max of 35000 to fit in the plot
+            [plt.plot(obs_cluster *np.ones(max_freq+1), np.arange(max_freq+1), color='black', lw=10) for obs_cluster in obs_clusters]
+
+    return cutoff, clusters_all
+
+#=========================================================================================================
+# 
+# Two-sample permutation test independent samples
+#
+#=========================================================================================================
+def two_sample_independent_permutation(df, subj_label='subject_nr', cond_label='conditions', depend_var='proportion',
+                                       num_perm=1000, obs_clusters=None, to_plot='no', title='', log_yaxis=True):
+    """
+    Under development: Independent test permutation
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+    label_to_shuffle : TYPE
+        DESCRIPTION.
+    depend_var : TYPE, optional
+        DESCRIPTION. The default is 'proportion'.
+    num_perm : TYPE, optional
+        DESCRIPTION. The default is 1000.
+    obs_clusters : TYPE, optional
+        DESCRIPTION. The default is None.
+    to_plot : TYPE, optional
+        DESCRIPTION. The default is 'no'.
+    title : TYPE, optional
+        DESCRIPTION. The default is ''.
+    log_yaxis : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    cutoff : TYPE
+        DESCRIPTION.
+    clusters_all : TYPE
+        DESCRIPTION.
+
+    """
+    
+        
+    
+    start_time = time.perf_counter()
+    
+    cond1_perm = []
+    cond2_perm = []
+    cond_names = df[cond_label].unique()
+    print(cond_names)
+    if cond_names.size !=2:
+        print('Use only two condition labels...')
+    
+    for perm in np.arange(num_perm):
+        groups_list = []
+        for name, group in df.groupby(df[cond_label]): # loop thru every condition and shuffle the subjects
+            np.random.shuffle(group[subj_label.values])
+            groups_list.append(group) # put together all subjects again
+            
+        df_new = pd.concat(groups_list) # make a new data frame with labels shuffled for each subject     
+            
+        cond1 = np.array(df_new[df_new.condition == cond_names[0]][depend_var].mean()) # average time-courses across trials
+        cond2 = np.array(df_new[df_new.condition == cond_names[1]][depend_var].mean()) # average time-courses across trials
+        
+        cond1_perm.append(cond1)
+        cond2_perm.append(cond2)
+    
+    cond1_perm = np.dstack(cond1_perm)
+    cond2_perm = np.dstack(cond2_perm)
+    
+    print('Generating permutations took: ', time.perf_counter() - start_time)
+        
+    # Cluster extraction
+    start_time = time.perf_counter()
+
+    stats = ttest_ind(cond1_perm, cond2_perm)
     stats = np.array(stats)
     
     mask_nan = np.isnan(stats[0]) # get index of nan values
