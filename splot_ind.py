@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 18 12:41:59 2022
+Created on Thu Nov 24 22:46:25 2022
 
-@author: artem belopolsky
+@author: artem
 
-SPLOT re-analysis for Vehlen, Belopolsky & Domes https://osf.io/x92ds/
+SPLOT for simulated independent samples data
 """
-
 
 
 
@@ -66,37 +65,40 @@ AOI = 'Face'
 df = df[df.area_of_interest == AOI]
 
 
+#================================================================================================ 
+#
+# Simulate a dataframe for independent samples
+#
+#================================================================================================  
+cond1 = df[(df.condition=='Cond1') & (df.subject_nr%2 == 0)]
+cond2 = df[(df.condition=='Cond2') & (df.subject_nr%2 != 0)]
+df = pd.concat([cond1, cond2])
+
 
 #================================================================================================
 # Extracting and plotting data for Cond1 and Cond2 
 #================================================================================================
-
-cond1, cond2 = extract_conditions(df, depend_var='proportion', ind_var='condition', 
+cond1, cond2 = extract_conditions(df, design='independent', depend_var='proportion', ind_var='condition', 
                                conditions=['Cond1', 'Cond2'], to_plot='yes', 
                                per_subj=False, title=AOI)
+
 
 #================================================================================================
 # Statistics for COND1 and COND2 conditions
 #================================================================================================    
 #
-# Two-sample t-test for COND1 and COND2, cluster sizes and optionally add errobars 
+# Two-sample independent t-test for COND1 and COND2, cluster sizes and optionally add errobars 
 #                                                             and clusters to the existing figure
 #
 #================================================================================================  
-
-
-clusters_cond1_cond2 = two_sample_ttest(cond1, cond2, confidence=0.975, color1='#5e3c99',\
+clusters_cond1_cond2 = two_sample_ttest(cond1, cond2, ttest_type='independent', confidence=0.975, color1='#5e3c99',\
                 color2='#e66101',to_plot='yes', cond_names= ['negative', 'positive'])
+    
 
 #================================================================================================ 
 #
-# Permutation testing: Two-sample for COND1 vs COND2, plots cluster distribution, returns 95th percentile
+# Permutation testing: Two-sample independent for COND1 vs COND2, plots cluster distribution, returns 95th percentile
 #
-#================================================================================================  
-print('\nStarting permutation for TWO-SAMPLE tests: cond1 vs cond2...\n')
-
-cutoff_2sampl, clusters_all = two_sample_paired_permutation(df, num_perm=1000, obs_clusters=clusters_cond1_cond2, 
-                                       label_to_shuffle='condition', \
-                                       to_plot='yes', title= AOI + ':Negative vs Positive')                 
-
-
+#================================================================================================      
+cutoff_2sampl, clusters_all = two_sample_independent_permutation(df, subj_label='subject_nr', cond_label='condition', obs_clusters=clusters_cond1_cond2,
+                                       num_perm=1000, to_plot='yes')

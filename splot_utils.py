@@ -41,9 +41,9 @@ def smooth_sqwave(df, depend_var='counts2', sigma=100):
 #================================================================================================
 # Extracting and plotting data for Cond1 and Cond2 
 #================================================================================================
-def extract_conditions(df, depend_var, ind_var, conditions, to_plot='no', per_subj=True, title=''):
+def extract_conditions(df, depend_var, ind_var, conditions, design='paired', to_plot='no', per_subj=True, title=''):
     
-    print('\nExtracting reported and missed conditions and averaging over trials and then over participants...')       
+    print(f'\nExtracting conditions {conditions} and averaging over trials and then over participants...')       
 
 
     cond1 = []
@@ -51,11 +51,20 @@ def extract_conditions(df, depend_var, ind_var, conditions, to_plot='no', per_su
     
     assert(len(conditions) == 2)
     
-    for subj_nr in df.subject_nr.unique():
-        cond1_df = df[(df.subject_nr == subj_nr) & (df[ind_var] == conditions[0])] # select the right slice of df
-        cond1.append(np.vstack(cond1_df[depend_var]).mean(axis=0)) # accumulating across trials
-        cond2_df = df[(df.subject_nr == subj_nr) & (df[ind_var] == conditions[1])] # select the right slice of df
-        cond2.append(np.vstack(cond2_df[depend_var]).mean(axis=0)) # accumulating across trials
+    
+    if design == 'paired':
+        for subj_nr in df.subject_nr.unique():
+            cond1_df = df[(df.subject_nr == subj_nr) & (df[ind_var] == conditions[0])] # select the right slice of df
+            cond1.append(np.vstack(cond1_df[depend_var]).mean(axis=0)) # accumulating across trials
+            cond2_df = df[(df.subject_nr == subj_nr) & (df[ind_var] == conditions[1])] # select the right slice of df
+            cond2.append(np.vstack(cond2_df[depend_var]).mean(axis=0)) # accumulating across trials
+            
+    elif design == 'independent':
+        for name, group in df.groupby(df.subject_nr):
+            if (group.condition == conditions[0]).all():
+                cond1.append(group.proportion.mean())
+            elif (group.condition == conditions[1]).all():
+                cond2.append(group.proportion.mean()) 
     
     cond1 = np.array(cond1)
     cond2 = np.array(cond2) 
@@ -107,12 +116,14 @@ def two_sample_ttest(data1, data2, ttest_type='paired', confidence=0.975, bonfer
     
     if ttest_type == 'paired':
         stats = ttest_rel(data1, data2)
+        sems = sem(data1-data2)/2.
     elif ttest_type == 'independent':
         stats = ttest_ind(data1, data2)
+        sems = np.sqrt(sem(data1)**2 + sem(data2)**2)
         
     stats = np.array(stats)
     
-    sems = sem(data1-data2)/2.
+    
     sems = np.array(sems).T 
     CIs = sems.astype('float') * (t.ppf((1 + confidence) / 2., N-1))
     
@@ -352,13 +363,18 @@ def two_sample_independent_permutation(df, subj_label='subject_nr', cond_label='
     for perm in np.arange(num_perm):
         groups_list = []
         for name, group in df.groupby(df[cond_label]): # loop thru every condition and shuffle the subjects
-            np.random.shuffle(group[subj_label.values])
+            np.random.shuffle(group[subj_label].values)
             groups_list.append(group) # put together all subjects again
             
         df_new = pd.concat(groups_list) # make a new data frame with labels shuffled for each subject     
-            
-        cond1 = np.array(df_new[df_new.condition == cond_names[0]][depend_var].mean()) # average time-courses across trials
-        cond2 = np.array(df_new[df_new.condition == cond_names[1]][depend_var].mean()) # average time-courses across trials
+        
+        cond1 = []
+        cond2 = []
+        for name, group in df_new.groupby(df_new.subject_nr):
+            if (group.condition == cond_names[0]).all():
+                cond1.append(group.proportion.mean())
+            elif (group.condition == cond_names[1]).all():
+                cond2.append(group.proportion.mean())  
         
         cond1_perm.append(cond1)
         cond2_perm.append(cond2)
@@ -377,7 +393,7 @@ def two_sample_independent_permutation(df, subj_label='subject_nr', cond_label='
     mask_nan = np.isnan(stats[0]) # get index of nan values
     stats[0][mask_nan] = 0 # replace nan t-values with zeros
     
-    sems = sem(cond1_perm - cond2_perm)/2. 
+    sems = np.sqrt(sem(cond1_perm)**2 + sem(cond2_perm)**2)
     sems = np.array(sems)               
     
     t_stats = stats[0].T    
