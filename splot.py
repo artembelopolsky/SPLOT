@@ -17,7 +17,7 @@ mpl.rcParams['pdf.fonttype'] = 42  # necessary to be able to edit figure text in
 
 
 from splot_utils import smooth_sqwave, extract_conditions, two_sample_ttest, \
-                        two_sample_permutation
+                        two_sample_paired_permutation
 
 
 #================================================================================================s
@@ -62,8 +62,8 @@ df = smooth_sqwave(df, depend_var='sqwave',sigma=12)
 #================================================================================================
 # Select which AOI you want to analyse
 #================================================================================================
-
-df = df[df.area_of_interest == 'Face']
+AOI = 'Face'
+df = df[df.area_of_interest == AOI]
 
 
 #================================================================================================
@@ -72,7 +72,7 @@ df = df[df.area_of_interest == 'Face']
 
 cond1, cond2 = extract_conditions(df, depend_var='proportion', ind_var='condition', 
                                conditions=['Cond1', 'Cond2'], to_plot='yes', 
-                               per_subj=False, title='Face')
+                               per_subj=False, title=AOI)
 
 #================================================================================================
 # Statistics for COND1 and COND2 conditions
@@ -92,11 +92,11 @@ clusters_rep_mis = two_sample_ttest(cond1, cond2, confidence=0.975, color1='#5e3
 # Permutation testing: Two-sample for COND1 vs COND2, plots cluster distribution, returns 95th percentile
 #
 #================================================================================================  
-print('\n Starting permutation for TWO-SAMPLE tests: cond1 vs cond2...\n')
+print('\nStarting permutation for TWO-SAMPLE tests: cond1 vs cond2...\n')
 
-cutoff_2sampl, clusters_all = two_sample_permutation(df, num_perm=1000, obs_clusters=clusters_rep_mis, 
+cutoff_2sampl, clusters_all = two_sample_paired_permutation(df, num_perm=1000, obs_clusters=clusters_rep_mis, 
                                        label_to_shuffle='condition', \
-                                       to_plot='yes', title='Negative vs Positive')                 
+                                       to_plot='yes', title= AOI + ':Negative vs Positive')                 
 
 
 

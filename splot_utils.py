@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from scipy.ndimage import gaussian_filter1d
-from scipy.stats import ttest_rel, sem, t, ttest_1samp, percentileofscore
+from scipy.stats import ttest_rel, ttest_ind, sem, t, ttest_1samp, percentileofscore
 
 
  #================================================================================================
@@ -43,7 +43,7 @@ def smooth_sqwave(df, depend_var='counts2', sigma=100):
 #================================================================================================
 def extract_conditions(df, depend_var, ind_var, conditions, to_plot='no', per_subj=True, title=''):
     
-    print('\n Extracting reported and missed conditions and averaging over trials and then over participants...')       
+    print('\nExtracting reported and missed conditions and averaging over trials and then over participants...')       
 
 
     cond1 = []
@@ -83,7 +83,7 @@ def extract_conditions(df, depend_var, ind_var, conditions, to_plot='no', per_su
 # Two sample t-test, with optional plotting of error bars and clusters
 # print cluster strengths       
 #=========================================================================================================
-def two_sample_ttest(data1, data2, confidence=0.975, bonferroni=False, to_plot='no', color1='#2c7bb6', color2='#d7191c', cond_names=[]):
+def two_sample_ttest(data1, data2, ttest_type='paired', confidence=0.975, bonferroni=False, to_plot='no', color1='#2c7bb6', color2='#d7191c', cond_names=[]):
     """
     Computes two-sample t-test against the overall mean
        
@@ -105,7 +105,11 @@ def two_sample_ttest(data1, data2, confidence=0.975, bonferroni=False, to_plot='
         
     N = data1.shape[0]
     
-    stats = ttest_rel(data1, data2)
+    if ttest_type == 'paired':
+        stats = ttest_rel(data1, data2)
+    elif ttest_type == 'independent':
+        stats = ttest_ind(data1, data2)
+        
     stats = np.array(stats)
     
     sems = sem(data1-data2)/2.
@@ -124,7 +128,7 @@ def two_sample_ttest(data1, data2, confidence=0.975, bonferroni=False, to_plot='
     clusters = np.split(t_stats, np.flatnonzero(np.diff(sign_mask)) + 1)[1 - sign_mask[0]::2]
     for i in range(len(clusters)):
         clusters_strength.append(np.abs(clusters[i]).sum())
-    print('Cluster strength(s) as sum of t-values for 2sample t-test' + str(cond_names) + ' : ', str(clusters_strength))
+    print(f'Cluster strength(s) as sum of t-values for 2sample {ttest_type} t-test' + str(cond_names) + ' : ', str(clusters_strength))
         
     if to_plot == 'yes': 
         print('Adding error-bars and cluster sizes to the existing figure...')
@@ -158,7 +162,8 @@ def two_sample_ttest(data1, data2, confidence=0.975, bonferroni=False, to_plot='
 # Two-sample permutation test 
 #
 #=========================================================================================================
-def two_sample_permutation(df, label_to_shuffle, depend_var='proportion', num_perm=1000, obs_clusters=None, to_plot='no', title=''):
+def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion', num_perm=1000, obs_clusters=None, to_plot='no', title='', log_yaxis=True):
+    
     
     start_time = time.perf_counter()
     
@@ -199,7 +204,8 @@ def two_sample_permutation(df, label_to_shuffle, depend_var='proportion', num_pe
     print('Generating permutations took: ', time.perf_counter() - start_time)
         
     # Cluster extraction
-    start_time = time.perf_counter()    
+    start_time = time.perf_counter()
+
     stats = ttest_rel(cond1_perm, cond2_perm)
     stats = np.array(stats)
     
@@ -213,7 +219,7 @@ def two_sample_permutation(df, label_to_shuffle, depend_var='proportion', num_pe
     sign_mask = stats[1] < 0.05
     sign_mask = sign_mask.T
     
-    print('T-test took: ', time.perf_counter() - start_time)
+    print('Paired T-test took: ', time.perf_counter() - start_time)
     
     # Split into significant clusters
     # https://stackoverflow.com/questions/43385877/efficient-numpy-subarrays-extraction-from-a-mask
@@ -245,10 +251,10 @@ def two_sample_permutation(df, label_to_shuffle, depend_var='proportion', num_pe
         plt.title(title, fontsize=35)       
         plt.xticks(fontsize=28)
         plt.yticks(fontsize=28)
-        plt.ylabel('Frequency (log)', fontsize=32)
+        plt.ylabel(f'Frequency (log={log_yaxis})', fontsize=32)
         plt.xlabel('Cluster strength (sum of t-values)', fontsize=32)   
         
-        hist_info = plt.hist(clusters_all, log=True)
+        hist_info = plt.hist(clusters_all, log=log_yaxis)
         #cutoff = np.percentile(clusters_all,95)
         #print('Significance Cutoff is: ', cutoff)
         plt.text(0,0, 'Significance Cutoff is: ' + str(cutoff))
