@@ -163,7 +163,38 @@ def two_sample_ttest(data1, data2, ttest_type='paired', confidence=0.975, bonfer
 #
 #=========================================================================================================
 def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion', num_perm=1000, obs_clusters=None, to_plot='no', title='', log_yaxis=True):
+    """
+    Only paired test permutation for now.
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+    label_to_shuffle : TYPE
+        DESCRIPTION.
+    depend_var : TYPE, optional
+        DESCRIPTION. The default is 'proportion'.
+    num_perm : TYPE, optional
+        DESCRIPTION. The default is 1000.
+    obs_clusters : TYPE, optional
+        DESCRIPTION. The default is None.
+    to_plot : TYPE, optional
+        DESCRIPTION. The default is 'no'.
+    title : TYPE, optional
+        DESCRIPTION. The default is ''.
+    log_yaxis : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    cutoff : TYPE
+        DESCRIPTION.
+    clusters_all : TYPE
+        DESCRIPTION.
+
+    """
     
+        
     
     start_time = time.perf_counter()
     
