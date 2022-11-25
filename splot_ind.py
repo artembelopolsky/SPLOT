@@ -16,7 +16,7 @@ mpl.rcParams['pdf.fonttype'] = 42  # necessary to be able to edit figure text in
 
 
 from splot_utils import smooth_sqwave, extract_conditions, two_sample_ttest, \
-                        two_sample_paired_permutation, two_sample_independent_permutation
+                        two_sample_independent_permutation
 
 
 #================================================================================================s
@@ -55,7 +55,11 @@ df = df.sort_values('subject_nr')
 # Smooth SQUARE WAVES for every trial
 #================================================================================================
 
-df = smooth_sqwave(df, depend_var='sqwave',sigma=12)
+sampling_Hz = 120. 
+sigma_ms = 100.
+sigma_pts = sigma_ms/(1000/sampling_Hz) 
+
+df = smooth_sqwave(df, depend_var='sqwave',sigma=sigma_pts)
 
 
 #================================================================================================

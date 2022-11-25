@@ -51,20 +51,21 @@ def extract_conditions(df, depend_var, ind_var, conditions, design='paired', to_
     
     assert(len(conditions) == 2)
     
-    
+    # Each subject participated in both conditions
     if design == 'paired':
         for subj_nr in df.subject_nr.unique():
             cond1_df = df[(df.subject_nr == subj_nr) & (df[ind_var] == conditions[0])] # select the right slice of df
-            cond1.append(np.vstack(cond1_df[depend_var]).mean(axis=0)) # accumulating across trials
+            cond1.append(np.vstack(cond1_df[depend_var]).mean(axis=0)) # average across trials for each subject for cond1
             cond2_df = df[(df.subject_nr == subj_nr) & (df[ind_var] == conditions[1])] # select the right slice of df
-            cond2.append(np.vstack(cond2_df[depend_var]).mean(axis=0)) # accumulating across trials
-            
+            cond2.append(np.vstack(cond2_df[depend_var]).mean(axis=0)) # average across trials for each subject for cond2
+    
+    # Each subject participated in one of the conditions
     elif design == 'independent':
         for name, group in df.groupby(df.subject_nr):
-            if (group.condition == conditions[0]).all():
-                cond1.append(group.proportion.mean())
+            if (group.condition == conditions[0]).all():    
+                cond1.append(group.proportion.mean())   # average across trials for each subject that belongs to cond1
             elif (group.condition == conditions[1]).all():
-                cond2.append(group.proportion.mean()) 
+                cond2.append(group.proportion.mean())   # average across trials for each subject that belongs to cond2
     
     cond1 = np.array(cond1)
     cond2 = np.array(cond2) 
@@ -176,7 +177,7 @@ def two_sample_ttest(data1, data2, ttest_type='paired', confidence=0.975, bonfer
 def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion', num_perm=1000, 
                                   obs_clusters=None, to_plot='no', title='', log_yaxis=True):
     """
-    Only paired test permutation for now.
+    Only paired test permutation
 
     Parameters
     ----------
@@ -319,7 +320,7 @@ def two_sample_paired_permutation(df, label_to_shuffle, depend_var='proportion',
 def two_sample_independent_permutation(df, subj_label='subject_nr', cond_label='conditions', depend_var='proportion',
                                        num_perm=1000, obs_clusters=None, to_plot='no', title='', log_yaxis=True):
     """
-    Under development: Independent test permutation
+    Independent test permutation
 
     Parameters
     ----------
